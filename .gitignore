@@ -1,0 +1,41 @@
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.ipynb_checkpoints/
+*.egg-info/
+dist/
+build/
+artifacts/
+.DS_Store
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.jupyter/
+
+# Course corpora (force-tracked; some global gitignores exclude data/)
+!data/
+!data/medical_corpus.txt
+!data/medical_probes.txt
+!data/medical_control.txt
+
+# Optional large corpora (instructor network); never commit
+data/pubmed_sample.jsonl
+data/pubmed_train.jsonl
+data/pubmed_heldout.jsonl
+data/general_train.jsonl
+data/general_heldout.jsonl
+data/.pubmed_xml_cache/
+
+!models/
+!models/pretrained/
+!models/pretrained/**
+
+# Secrets — never commit
+.env
+
+# Instructor-only files — not for students
+TEACHING_PLAN.md
+INSTRUCTOR.md
+scripts/build_notebooks.py
