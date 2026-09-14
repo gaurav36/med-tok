@@ -112,46 +112,72 @@ def build_byte_level_bpe() -> Tokenizer:
     tokenizer.decoder = decoders.ByteLevel()
     # Example: "blood pressure"
     #
+    # Imagine the characters are indexed like this:
+    # b l o o d _ p r e s s u r e
+    # 0 1 2 3 4 5 6 7 8 9 0 1 2 3
+    # The space is at position 5.
+    #
     # One possible tokenization is:
     # token piece   | token id
     # "blood"      | 4123
     # " pressure"  | 9821
     #
-    # Notice that the second token piece still stores the leading space.
-    # The vocabulary is allowed to store pieces like " pressure", not only plain
-    # words like "pressure".
+    # Important: the second token piece still contains the space.
+    # So ID 9821 can mean " pressure", not just "pressure".
+    # The token ID does NOT store offset information like (6, 14).
+    # The ID only tells us WHICH vocabulary entry this token maps to.
     #
     # What do we actually send to the model?
     # We send only the token IDs: [4123, 9821]
+    # We do NOT send raw text, and we do NOT send offsets to the model.
     #
-    # When the model output is decoded:
+    # When decoding back to text:
     # - 4123 maps back to "blood"
     # - 9821 maps back to " pressure"
-    # - joining those pieces gives "blood pressure"
+    # - joining them gives "blood pressure"
+    # Decoding does not need offsets at all. It only needs the IDs and vocabulary.
     #
-    # Easy way to think about this: there are TWO different things here.
-    # 1. Token value stored in the vocabulary, like " pressure"
-    # 2. Offset metadata, like (6, 14)
+    # Offsets are a separate thing.
+    # Offsets tell us which characters in the ORIGINAL sentence a token came from.
+    # They are stored with the tokenization result, not inside the token ID itself.
+    # You can think of tokenizer.encode(...) as producing an Encoding-like result with:
+    # - ids: [4123, 9821]
+    # - tokens: ["blood", " pressure"]
+    # - offsets: [(0, 5), (6, 14)] when trim_offsets=True
     #
-    # Here "downstream code" means any later code that uses tokenizer spans, for example:
-    # - highlighting a word in the original sentence
-    # - extracting an entity span from text
-    # - mapping model output back to the user-visible text
+    # Without trimming, the second token may be reported like this:
+    # token          offset
+    # "blood"        (0, 5)
+    # " pressure"    (5, 14)
     #
-    # With `trim_offsets=True`:
-    # - what we SEND to the model is still the same token IDs, for example [4123, 9821]
-    # - the token piece is still " pressure"
-    # - only the reported character positions are cleaned up to match visible text
-    # - so the offset for " pressure" is reported like (6, 14), which points to "pressure"
+    # That means text[5:14] gives " pressure".
     #
-    # With `trim_offsets=False`:
-    # - what we SEND to the model is still the same token IDs, for example [4123, 9821]
-    # - the token piece is still " pressure"
-    # - but the reported character positions may include the extra byte-level whitespace area
-    # - that can make span-based code point to a less clean range than the user expects
+    # With trim_offsets=True:
+    # - token piece stays " pressure"
+    # - token ID stays 9821
+    # - only the reported offset is cleaned up
+    # - offset becomes more like (6, 14)
+    # - then text[6:14] gives "pressure"
     #
-    # So `trim_offsets` changes offset metadata only.
-    # It does NOT change the token text, token bytes, token IDs, or decoded final text.
+    # With trim_offsets=False:
+    # - token piece stays " pressure"
+    # - token ID stays 9821
+    # - offset may stay like (5, 14)
+    # - then text[5:14] gives " pressure"
+    #
+    # End-user effect:
+    # - trim_offsets=True helps highlighting/extraction show "pressure"
+    # - trim_offsets=False may highlight/extract " pressure" with the leading space
+    # - this matters for applications that map tokens back to the original text
+    #   such as highlighting, extraction, annotation, or showing model predictions
+    #
+    # Safe mental model:
+    # - tokens stay the same
+    # - token IDs stay the same
+    # - decoded text stays the same
+    # - only the reported character positions become cleaner with trim_offsets=True
+    # - token ID tells the model WHAT the token is
+    # - offset tells your application WHERE that token came from
     tokenizer.post_processor = processors.ByteLevel(trim_offsets=True)
     # Return the configured tokenizer so the training function can fit it on the corpus.
     return tokenizer

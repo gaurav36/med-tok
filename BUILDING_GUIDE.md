@@ -263,6 +263,13 @@ You'll see a fertility table. **Don't interpret the numbers yet** — do the not
 
 Find the knee of the fertility curve: the smallest vocabulary size that gets close to the best compression result. For this PubMed corpus (<1B tokens), the recommended band is usually 16k-32k rather than the 50k "modern LLM default".
 
+What this command does in simple terms:
+
+- It trains or loads several versions of the medical tokenizer at different vocab sizes such as 16k, 32k, 50k, 64k, and 100k.
+- It then tests each one on held-out medical text and measures how many tokens are needed on average.
+- Fewer tokens means better compression.
+- The goal is to find the smallest vocab size that gets close to the best result, instead of blindly choosing a huge vocabulary.
+
 ```bash
 uv run python .\scripts\sweep_vocab_size.py --corpus .\data\pubmed_heldout.jsonl --heldout .\data\pubmed_heldout.jsonl --no-qwen
 ```
